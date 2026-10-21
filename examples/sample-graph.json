@@ -1,0 +1,90 @@
+{
+  "demo": true,
+  "updatedAt": "2026-10-22T09:00:00Z",
+  "nodes": [
+    {
+      "id": "org-demo",
+      "type": "organization",
+      "label": "Орбита Аналитика · Demo",
+      "attributes": {
+        "Контур": "Учебный",
+        "Отрасль": "Аналитика"
+      },
+      "confidence": 0.99,
+      "source": "Синтетический пример",
+      "discoveredAt": "2026-10-22T09:00:00Z",
+      "status": "confirmed"
+    },
+    {
+      "id": "domain-demo",
+      "type": "domain",
+      "label": "orbit-lab.example",
+      "attributes": {
+        "Назначение": "Документационный домен",
+        "Среда": "Demo"
+      },
+      "confidence": 0.99,
+      "source": "Синтетический пример",
+      "discoveredAt": "2026-10-22T09:00:00Z",
+      "status": "confirmed"
+    },
+    {
+      "id": "portal-demo",
+      "type": "subdomain",
+      "label": "portal.orbit-lab.example",
+      "attributes": {
+        "Сервис": "Учебный портал",
+        "Среда": "Demo"
+      },
+      "confidence": 0.96,
+      "source": "Синтетическое DNS-наблюдение",
+      "discoveredAt": "2026-10-22T09:00:00Z",
+      "status": "hypothesis"
+    },
+    {
+      "id": "ip-demo",
+      "type": "ip",
+      "label": "192.0.2.41",
+      "attributes": {
+        "Диапазон": "TEST-NET-1 · документационный",
+        "Среда": "Demo"
+      },
+      "confidence": 0.99,
+      "source": "Документационный диапазон RFC 5737",
+      "discoveredAt": "2026-10-22T09:00:00Z",
+      "status": "confirmed"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-org-domain",
+      "source": "org-demo",
+      "target": "domain-demo",
+      "relation": "belongs_to",
+      "confidence": 0.99,
+      "evidence": "Учебная принадлежность в синтетическом наборе",
+      "status": "confirmed",
+      "discoveredAt": "2026-10-22T09:00:00Z"
+    },
+    {
+      "id": "edge-domain-portal",
+      "source": "domain-demo",
+      "target": "portal-demo",
+      "relation": "linked_to",
+      "confidence": 0.96,
+      "evidence": "Демонстрационная связь поддомена",
+      "status": "hypothesis",
+      "discoveredAt": "2026-10-22T09:00:00Z"
+    },
+    {
+      "id": "edge-portal-ip",
+      "source": "portal-demo",
+      "target": "ip-demo",
+      "relation": "resolves_to",
+      "confidence": 0.99,
+      "evidence": "Синтетическая DNS-запись; обращения к адресу не выполнялись",
+      "status": "confirmed",
+      "discoveredAt": "2026-10-22T09:00:00Z"
+    }
+  ]
+}
