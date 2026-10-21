@@ -42,21 +42,29 @@ const colors: Record<EntityType, string> = {
   application: "#818cf8", repository: "#c4b5fd", finding: "#fbbf24", vulnerability: "#f87171", asset: "#34d399",
 };
 
-function runLayout(cy: Core, mode: GraphMode) {
+function runLayout(cy: Core, mode: GraphMode): ReturnType<Core["layout"]> | null {
   const active = cy.nodes(":visible");
-  if (!active.length) return;
-  const common = { animate: true, animationDuration: 450, fit: true, padding: 76, nodeDimensionsIncludeLabels: true };
-  if (mode === "hierarchy") active.layout({ ...common, name: "breadthfirst", directed: true, spacingFactor: 1.15, circle: false, roots: ["#org"] }).run();
-  else if (mode === "radial") active.layout({ ...common, name: "concentric", minNodeSpacing: 34, concentric: (ele) => ele.id() === "org" ? 10 : ele.connectedEdges().length, levelWidth: () => 2 }).run();
-  else if (mode === "timeline") active.layout({ ...common, name: "grid", rows: 4, sort: (a, b) => a.data("order") - b.data("order"), spacingFactor: 1.3 }).run();
-  else if (mode === "evidence") active.layout({ ...common, name: "breadthfirst", directed: true, spacingFactor: 1.05, roots: active.filter("[type = 'finding'], [type = 'vulnerability']").map((node) => `#${node.id()}`) }).run();
-  else if (mode === "path") active.layout({ ...common, name: "breadthfirst", directed: true, spacingFactor: 1.25, roots: ["#org"], maximal: true }).run();
-  else active.layout({ ...common, name: "cose", idealEdgeLength: 142, nodeRepulsion: 7900, gravity: 0.18, numIter: 450, randomize: false }).run();
+  if (!active.length) return null;
+  const common = { animate: false, fit: true, padding: 76, nodeDimensionsIncludeLabels: true };
+  const layout = mode === "hierarchy"
+    ? active.layout({ ...common, name: "breadthfirst", directed: true, spacingFactor: 1.15, circle: false, roots: ["#org"] })
+    : mode === "radial"
+      ? active.layout({ ...common, name: "concentric", minNodeSpacing: 34, concentric: (ele) => ele.id() === "org" ? 10 : ele.connectedEdges().length, levelWidth: () => 2 })
+      : mode === "timeline"
+        ? active.layout({ ...common, name: "grid", rows: 4, sort: (a, b) => a.data("order") - b.data("order"), spacingFactor: 1.3 })
+        : mode === "evidence"
+          ? active.layout({ ...common, name: "breadthfirst", directed: true, spacingFactor: 1.05, roots: active.filter("[type = 'finding'], [type = 'vulnerability']").map((node) => `#${node.id()}`) })
+          : mode === "path"
+            ? active.layout({ ...common, name: "breadthfirst", directed: true, spacingFactor: 1.25, roots: ["#org"], maximal: true })
+            : active.layout({ ...common, name: "cose", idealEdgeLength: 142, nodeRepulsion: 7900, gravity: 0.18, numIter: 450, randomize: false });
+  layout.run();
+  return layout;
 }
 
 export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(function GraphCanvas({ graph, mode, selectedIds, query, visibleTypes, visibleNodeIds, showLabels, positions, onSelect, onPositions, onLayout, onTogglePin, onExpand }, ref) {
   const hostRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Core | null>(null);
+  const layoutRef = useRef<ReturnType<Core["layout"]> | null>(null);
   const callbacks = useRef({ onSelect, onPositions, onLayout, onTogglePin, onExpand });
   callbacks.current = { onSelect, onPositions, onLayout, onTogglePin, onExpand };
 
@@ -86,7 +94,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(function GraphCa
     ];
     const cy = cytoscape({
       container: hostRef.current, elements, minZoom: 0.25, maxZoom: 2.5, wheelSensitivity: 0.22,
-      layout: { name: "cose", animate: true, animationDuration: 520, idealEdgeLength: 142, nodeRepulsion: 7900, gravity: 0.18, numIter: 450, randomize: false },
+      layout: { name: "preset" },
       style: [
         { selector: "node", style: { "background-color": "data(color)", "background-opacity": 0.16, "border-color": "data(color)", "border-width": 1.5, "width": "data(size)", "height": "data(size)", label: "data(label)", color: "#e8e8f0", "font-family": "Inter, Segoe UI, sans-serif", "font-size": 10, "font-weight": 500, "text-wrap": "ellipsis", "text-max-width": "142", "text-valign": "bottom", "text-margin-y": 9, "text-outline-color": "#101116", "text-outline-width": 2, "overlay-opacity": 0, "transition-property": "opacity, border-width, background-opacity", "transition-duration": 180 } },
         { selector: "node[type = 'organization']", style: { shape: "round-rectangle", "font-size": 12, "font-weight": 700 } },
@@ -128,7 +136,13 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(function GraphCa
     });
     cy.on("cxttap", "node", (event) => callbacks.current.onTogglePin(event.target.id()));
     cy.on("dbltap", "node", (event) => callbacks.current.onExpand(event.target.id()));
-    return () => { cy.destroy(); cyRef.current = null; };
+    return () => {
+      layoutRef.current?.stop();
+      layoutRef.current = null;
+      cy.stop(true);
+      cy.destroy();
+      cyRef.current = null;
+    };
   }, []);
 
   useEffect(() => {
@@ -188,7 +202,13 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(function GraphCa
   }, [graph, selectedIds, query, visibleTypes, visibleNodeIds]);
 
   useEffect(() => { const cy = cyRef.current; if (cy) cy.edges().style("label", showLabels ? "data(label)" : ""); }, [showLabels]);
-  useEffect(() => { const cy = cyRef.current; if (cy) runLayout(cy, mode); }, [mode, graph.nodes.length, graph.edges.length]);
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    layoutRef.current?.stop();
+    layoutRef.current = runLayout(cy, mode);
+    return () => { layoutRef.current?.stop(); layoutRef.current = null; };
+  }, [mode, graph.nodes.length, graph.edges.length]);
 
   return <div ref={hostRef} className="graph-host" aria-label="Интерактивное полотно графа сущностей" role="application" />;
 });
