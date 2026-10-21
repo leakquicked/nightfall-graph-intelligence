@@ -34,6 +34,12 @@ const NAV_TYPES: Partial<Record<NavId, EntityType[]>> = {
 };
 const CONFIDENCE_LABEL = (value: number) => value >= .9 ? "Высокая" : value >= .65 ? "Средняя" : "Низкая";
 const STATUS_LABEL = { confirmed: "Подтверждено", hypothesis: "Гипотеза", unknown: "Неизвестно" } as const;
+let fallbackIdSequence = 0;
+const createId = () => {
+  if (typeof globalThis.crypto?.randomUUID === "function") return globalThis.crypto.randomUUID();
+  fallbackIdSequence += 1;
+  return `nightfall-${Date.now().toString(36)}-${fallbackIdSequence.toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+};
 
 export default function Home() {
   const canvasRef = useRef<GraphCanvasHandle>(null);
@@ -104,7 +110,7 @@ export default function Home() {
 
   const showToast = useCallback((message: string) => setToast(message), []);
   const logActivity = useCallback((title: string, detail: string) => {
-    setActivity((items) => [{ id: crypto.randomUUID(), at: new Date().toISOString(), title, detail }, ...items].slice(0, 20));
+    setActivity((items) => [{ id: createId(), at: new Date().toISOString(), title, detail }, ...items].slice(0, 20));
   }, []);
   const rememberState = useCallback((snapshot: WorkspaceSnapshot) => {
     const base = historyIndex >= 0 ? workspaceHistory.slice(0, historyIndex + 1) : [{ positions, selectedIds }];
@@ -170,7 +176,7 @@ export default function Home() {
   const createInvestigation = () => {
     const title = modalTitle.trim();
     if (!title) { showToast("Введите название расследования"); return; }
-    const item = { id: crypto.randomUUID(), title, createdAt: new Date().toISOString(), nodeIds: [...selectedIds], notes: "" };
+    const item = { id: createId(), title, createdAt: new Date().toISOString(), nodeIds: [...selectedIds], notes: "" };
     setInvestigations((current) => [item, ...current]); setActiveInvestigation(item.id); setInvestigationNotes(""); setModal(null); setModalTitle("");
     logActivity("Создано расследование", title);
     showToast("Рабочая область расследования создана");
@@ -310,7 +316,7 @@ export default function Home() {
                 <div className="canvas-vignette" />
                 <div className="canvas-tag"><span className="tiny-pulse" /> ДЕМО-КОНТУР <span className="tag-divider" /> ПАССИВНЫЙ РЕЖИМ</div>
                 <div className="map-controls"><button onClick={() => canvasRef.current?.zoom(.14)} aria-label="Увеличить масштаб"><Plus size={15} /></button><span>{ready ? "100%" : "—"}</span><button onClick={() => canvasRef.current?.zoom(-.14)} aria-label="Уменьшить масштаб"><Minus size={15} /></button><button onClick={() => canvasRef.current?.fit()} aria-label="Вписать граф в экран"><Maximize size={14} /></button></div>
-                <div className="minimap" aria-label="Мини-карта графа"><div className="minimap-viewport" />{minimapPoints(graph.nodes, positions).map((point) => <i key={point.id} style={{ left: `${point.x}%`, top: `${point.y}%`, background: colorsFor(point.type) }} />)}</div>
+              <div className="minimap" aria-label="Мини-карта графа"><div className="minimap-viewport" />{ready && minimapPoints(graph.nodes, positions).map((point) => <i key={point.id} style={{ left: `${point.x.toFixed(1)}%`, top: `${point.y.toFixed(1)}%`, backgroundColor: colorsFor(point.type) }} />)}</div>
                 <div className="canvas-coordinates">Узел выбран: {selectedIds.length ? selectedIds.length : "нет"}<span /> Масштаб: полотно интерактивно</div>
               </div>
               <div className="canvas-footer"><span><i className="legend-dot confirmed" /> Подтверждено</span><span><i className="legend-line hypothesis" /> Гипотеза</span><span><i className="legend-line unknown" /> Неизвестно</span><span className="footer-hint">Перемещение: перетащите полотно · Узел: щелчок · Мультивыбор: Shift + щелчок · Закрепить: правый щелчок</span></div>
