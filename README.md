@@ -1,3 +1,5 @@
+![Node.js checks](https://github.com/leakquicked/nightfall-graph-intelligence/actions/workflows/node-checks.yml/badge.svg)
+
 # NIGHTFALL — Ghost Protocol
 
 NIGHTFALL — прототип рабочей станции threat intelligence для исследования связей между публичными цифровыми активами. Граф — основная поверхность приложения: он поддерживает поиск, фильтры, выбор нескольких сущностей, перемещение узлов, раскрытие соседей, режимы представления и рабочие расследования.
